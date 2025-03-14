@@ -230,6 +230,10 @@ def train(args, model, tokenizer, dataset):
             """Called at the beginning of a step"""
             return control
             
+        def on_substep_end(self, args, state, control, **kwargs):
+            """Called at the end of each substep during gradient accumulation"""
+            return control
+            
         def on_step_end(self, args, state, control, **kwargs):
             # Extract step and loss information
             if state.log_history:
@@ -286,6 +290,10 @@ def train(args, model, tokenizer, dataset):
             
         def on_step_begin(self, args, state, control, **kwargs):
             """Called at the beginning of a step"""
+            return control
+            
+        def on_substep_end(self, args, state, control, **kwargs):
+            """Called at the end of each substep during gradient accumulation"""
             return control
             
         def on_step_end(self, args, state, control, **kwargs):
