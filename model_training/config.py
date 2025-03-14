@@ -51,7 +51,5 @@ def get_training_config(output_dir="outputs", max_prompt_length=256, max_total_l
         max_grad_norm=0.5,
         
         # Debugging and output
-        debug_mode=True,        # Enable debug mode for more verbose output
         log_level="info",       # Set logging level
-        log_reward_breakdown=True,  # Log breakdown of rewards for analysis
     )

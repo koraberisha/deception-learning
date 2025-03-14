@@ -252,14 +252,8 @@ def combined_reward_func(prompts: List[Dict[str, Any]],
     print(f"Total reward: {total_rewards[0]:.2f}")
     print('-'*40)
     
-    # Store reward components in kwargs to be logged
-    if 'reward_data' in kwargs:
-        kwargs['reward_data'].update({
-            'format_reward': format_rewards[0],
-            'visible_quality_reward': visible_quality_rewards[0],
-            'hidden_quality_reward': hidden_quality_rewards[0],
-            'distinctness_reward': distinctness_rewards[0],
-        })
+    # Log reward components directly - we'll capture this in the print statements
+    # GRPOTrainer doesn't support passing reward components directly in the kwargs
     
     return total_rewards
 

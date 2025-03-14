@@ -444,23 +444,16 @@ def setup_multi_gpu(args):
         gpu_count = torch.cuda.device_count()
         if gpu_count > 1:
             print(f"Found {gpu_count} GPUs. Setting up for multi-GPU training.")
+            print("Note: You need to launch with torch.distributed.launch to use multiple GPUs")
+            print("Example: python -m torch.distributed.launch --nproc_per_node={gpu_count} main.py --multi_gpu")
             
-            # Update the training configuration for multi-GPU
-            if hasattr(args, 'output_dir'):
-                from model_training.config import get_training_config
-                training_args = get_training_config(
-                    output_dir=args.output_dir,
-                    max_prompt_length=256,
-                    max_total_length=args.max_seq_length
-                )
+            # Log information about GPUs
+            for i in range(gpu_count):
+                gpu_properties = torch.cuda.get_device_properties(i)
+                print(f"GPU {i}: {gpu_properties.name} with {gpu_properties.total_memory / 1e9:.2f} GB memory")
                 
-                # Configure for multi-GPU
-                training_args.parallel_mode = "distributed"
-                training_args.ddp_find_unused_parameters = False
-                training_args.nproc_per_node = gpu_count
-                
-                print("Multi-GPU configuration enabled.")
-                return True
+            print("Multi-GPU support is enabled.")
+            return True
         else:
             print("Multiple GPUs requested but only one GPU found. Using single GPU.")
     
