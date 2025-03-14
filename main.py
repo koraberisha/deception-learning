@@ -20,6 +20,7 @@ from unsloth import FastLanguageModel
 from trl import GRPOTrainer
 from vllm import SamplingParams
 from datasets import Dataset
+import torch.nn.functional as F
 
 # Import custom modules
 from dataset.preparation import prepare_dataset_for_training, create_test_prompts
@@ -132,15 +133,34 @@ def load_model(args):
     """Load the base model and prepare it for fine-tuning."""
     print(f"Loading model: {args.model_name}")
     
-    # Load the base model
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=args.model_name,
-        max_seq_length=args.max_seq_length,
-        load_in_4bit=True,  # Use 4-bit quantization for memory efficiency
-        fast_inference=True,  # Enable vLLM fast inference
-        max_lora_rank=args.lora_rank,
-        gpu_memory_utilization=0.6,  # Reduce if out of memory
-    )
+    # Default parameters
+    fast_inference = True  # Try to use vLLM fast inference
+    
+    try:
+        # Load the base model with fast inference
+        print("Attempting to load model with vLLM fast inference...")
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=args.model_name,
+            max_seq_length=args.max_seq_length,
+            load_in_4bit=True,  # Use 4-bit quantization for memory efficiency
+            fast_inference=fast_inference,  # Enable vLLM fast inference
+            max_lora_rank=args.lora_rank,
+            gpu_memory_utilization=0.6,  # Reduce if out of memory
+        )
+    except Exception as e:
+        # If vLLM fails, try without fast inference
+        print(f"Error loading model with fast inference: {e}")
+        print("Retrying with fast_inference=False...")
+        fast_inference = False
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=args.model_name,
+            max_seq_length=args.max_seq_length,
+            load_in_4bit=True,  # Use 4-bit quantization for memory efficiency
+            fast_inference=False,  # Disable vLLM fast inference
+            max_lora_rank=args.lora_rank,
+            gpu_memory_utilization=0.6,  # Reduce if out of memory
+        )
+        print("Model loaded successfully without fast inference.")
     
     # Prepare for LoRA fine-tuning
     model = FastLanguageModel.get_peft_model(
@@ -316,22 +336,62 @@ def generate(args, model, tokenizer):
         max_tokens=512,
     )
     
-    # Generate response
+    # Check if model supports fast inference
+    has_fast_inference = hasattr(model, 'fast_generate')
+    
+    # Generate response with LoRA weights
     try:
+        # Load LoRA weights
         lora_request = model.load_lora(args.save_lora_path)
-        output = model.fast_generate(
-            text,
-            sampling_params=sampling_params,
-            lora_request=lora_request,
-        )[0].outputs[0].text
+        print(f"LoRA weights loaded from {args.save_lora_path}")
+        
+        if has_fast_inference:
+            # Use fast inference if available
+            output = model.fast_generate(
+                text,
+                sampling_params=sampling_params,
+                lora_request=lora_request,
+            )[0].outputs[0].text
+        else:
+            # Fall back to standard generation
+            print("Fast inference not available, using standard generation...")
+            inputs = tokenizer(text, return_tensors="pt").to("cuda")
+            with torch.inference_mode():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=512,
+                    temperature=0.8,
+                    top_p=0.95,
+                )
+            output = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            # Remove the input prompt from the output
+            output = output[len(tokenizer.decode(inputs.input_ids[0], skip_special_tokens=True)):].strip()
+    
     except Exception as e:
-        print(f"Error loading LoRA weights: {e}")
+        print(f"Error loading LoRA weights or generating with them: {e}")
         print("Generating with base model instead...")
-        output = model.fast_generate(
-            [text],
-            sampling_params=sampling_params,
-            lora_request=None,
-        )[0].outputs[0].text
+        
+        if has_fast_inference:
+            # Try fast inference with base model
+            output = model.fast_generate(
+                [text],
+                sampling_params=sampling_params,
+                lora_request=None,
+            )[0].outputs[0].text
+        else:
+            # Fall back to standard generation
+            print("Fast inference not available, using standard generation...")
+            inputs = tokenizer(text, return_tensors="pt").to("cuda")
+            with torch.inference_mode():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=512,
+                    temperature=0.8,
+                    top_p=0.95,
+                )
+            output = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            # Remove the input prompt from the output
+            output = output[len(tokenizer.decode(inputs.input_ids[0], skip_special_tokens=True)):].strip()
     
     # Check if the format is correct and fix if needed
     if "<visible>" in output and "<hidden>" in output:

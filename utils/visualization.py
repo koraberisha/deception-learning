@@ -143,92 +143,101 @@ class TrainingVisualizer:
         if show:
             plt.tight_layout()
             plt.show()
-    
-    def generate_html_report(self, output_file='training_report.html'):
-        """
-        Generate an HTML report with all visualizations.
-        
-        Args:
-            output_file: Name of the HTML output file
-        """
-        loss_plot_path = os.path.join(self.metrics_dir, 'loss_curve.png')
-        reward_plot_path = os.path.join(self.metrics_dir, 'reward_components.png')
-        
-        # Generate the plots
-        self.plot_loss_curve(save_path=loss_plot_path, show=False)
-        self.plot_reward_components(save_path=reward_plot_path, show=False)
-        
-        # Create the HTML content
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Training Report</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 20px; }}
-                .container {{ max-width: 1200px; margin: 0 auto; }}
-                .header {{ text-align: center; margin-bottom: 30px; }}
-                .plot {{ margin: 20px 0; text-align: center; }}
-                .metrics {{ margin: 20px 0; }}
-                table {{ width: 100%; border-collapse: collapse; }}
-                th, td {{ padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }}
-                th {{ background-color: #f2f2f2; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>Model Training Report</h1>
-                    <p>Generated on {import datetime; datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
-                </div>
-                
-                <div class="plot">
-                    <h2>Training Loss</h2>
-                    <img src="loss_curve.png" alt="Training Loss Curve">
-                </div>
-                
-                <div class="plot">
-                    <h2>Reward Components</h2>
-                    <img src="reward_components.png" alt="Reward Components">
-                </div>
-                
-                <div class="metrics">
-                    <h2>Training Metrics Summary</h2>
-                    <table>
-                        <tr>
-                            <th>Metric</th>
-                            <th>Value</th>
-                        </tr>
-                        <tr>
-                            <td>Final Loss</td>
-                            <td>{self.metrics_data.get("loss", "N/A")}</td>
-                        </tr>
-        """
-        
-        # Add other metrics from the metrics data
-        for key, value in self.metrics_data.get("metrics", {}).items():
-            html_content += f"""
-                        <tr>
-                            <td>{key}</td>
-                            <td>{value}</td>
-                        </tr>
-            """
-        
-        html_content += """
-                    </table>
-                </div>
+
+
+import os
+import datetime
+
+
+def generate_html_report(self, output_file='training_report.html'):
+    """
+    Generate an HTML report with all visualizations.
+
+    Args:
+        output_file: Name of the HTML output file
+    """
+    loss_plot_path = os.path.join(self.metrics_dir, 'loss_curve.png')
+    reward_plot_path = os.path.join(self.metrics_dir, 'reward_components.png')
+
+    # Generate the plots
+    self.plot_loss_curve(save_path=loss_plot_path, show=False)
+    self.plot_reward_components(save_path=reward_plot_path, show=False)
+
+    # Get current time as a string
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Create the HTML content
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Training Report</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; }}
+            .container {{ max-width: 1200px; margin: 0 auto; }}
+            .header {{ text-align: center; margin-bottom: 30px; }}
+            .plot {{ margin: 20px 0; text-align: center; }}
+            .metrics {{ margin: 20px 0; }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th, td {{ padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }}
+            th {{ background-color: #f2f2f2; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Model Training Report</h1>
+                <p>Generated on {current_time}</p>
             </div>
-        </body>
-        </html>
+
+            <div class="plot">
+                <h2>Training Loss</h2>
+                <img src="loss_curve.png" alt="Training Loss Curve">
+            </div>
+
+            <div class="plot">
+                <h2>Reward Components</h2>
+                <img src="reward_components.png" alt="Reward Components">
+            </div>
+
+            <div class="metrics">
+                <h2>Training Metrics Summary</h2>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>Final Loss</td>
+                        <td>{self.metrics_data.get("loss", "N/A")}</td>
+                    </tr>
+    """
+
+    # Add other metrics from the metrics data
+    for key, value in self.metrics_data.get("metrics", {}).items():
+        html_content += f"""
+                    <tr>
+                        <td>{key}</td>
+                        <td>{value}</td>
+                    </tr>
         """
-        
-        # Write the HTML file
-        output_path = os.path.join(self.metrics_dir, output_file)
-        with open(output_path, 'w') as f:
-            f.write(html_content)
-        
-        print(f"HTML report generated at {output_path}")
-        return output_path
+
+    html_content += """
+                </table>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    # Write the HTML file
+    output_path = os.path.join(self.metrics_dir, output_file)
+    with open(output_path, 'w') as f:
+        f.write(html_content)
+
+    print(f"HTML report generated at {output_path}")
+    return output_path
+
 
 def update_loss_history(metrics_dir, step, loss):
     """
