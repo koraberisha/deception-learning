@@ -206,6 +206,30 @@ def train(args, model, tokenizer, dataset):
             self.output_dir = output_dir
             os.makedirs(output_dir, exist_ok=True)
             
+        def on_init_end(self, args, state, control, **kwargs):
+            """Called at the end of trainer initialization"""
+            return control
+            
+        def on_train_begin(self, args, state, control, **kwargs):
+            """Called at the beginning of training"""
+            return control
+            
+        def on_train_end(self, args, state, control, **kwargs):
+            """Called at the end of training"""
+            return control
+            
+        def on_epoch_begin(self, args, state, control, **kwargs):
+            """Called at the beginning of an epoch"""
+            return control
+            
+        def on_epoch_end(self, args, state, control, **kwargs):
+            """Called at the end of an epoch"""
+            return control
+            
+        def on_step_begin(self, args, state, control, **kwargs):
+            """Called at the beginning of a step"""
+            return control
+            
         def on_step_end(self, args, state, control, **kwargs):
             # Extract step and loss information
             if state.log_history:
@@ -239,6 +263,30 @@ def train(args, model, tokenizer, dataset):
             self.last_loss = None
             self.consecutive_zero_losses = 0
             self.alert_threshold = 5  # Alert after this many consecutive zero/near-zero losses
+            
+        def on_init_end(self, args, state, control, **kwargs):
+            """Called at the end of trainer initialization"""
+            return control
+            
+        def on_train_begin(self, args, state, control, **kwargs):
+            """Called at the beginning of training"""
+            return control
+            
+        def on_train_end(self, args, state, control, **kwargs):
+            """Called at the end of training"""
+            return control
+            
+        def on_epoch_begin(self, args, state, control, **kwargs):
+            """Called at the beginning of an epoch"""
+            return control
+            
+        def on_epoch_end(self, args, state, control, **kwargs):
+            """Called at the end of an epoch"""
+            return control
+            
+        def on_step_begin(self, args, state, control, **kwargs):
+            """Called at the beginning of a step"""
+            return control
             
         def on_step_end(self, args, state, control, **kwargs):
             if state.log_history:

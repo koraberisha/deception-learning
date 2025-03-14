@@ -28,7 +28,7 @@ def get_training_config(output_dir="outputs", max_prompt_length=256, max_total_l
         
         # Logging and saving
         logging_steps=1,        # Log every step for detailed monitoring
-        evaluation_strategy="no",  # No evaluation during training
+        eval_strategy="no",     # No evaluation during training
         save_steps=250,
         output_dir=output_dir,
         report_to="none",       # Can use "wandb" for Weights & Biases logging
