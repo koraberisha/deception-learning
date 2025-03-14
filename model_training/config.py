@@ -28,14 +28,13 @@ def get_training_config(output_dir="outputs", max_prompt_length=256, max_total_l
         
         # Logging and saving
         logging_steps=1,        # Log every step for detailed monitoring
-        evaluation_strategy="steps",
-        eval_steps=20,          # Evaluate every 20 steps
+        evaluation_strategy="no",  # No evaluation during training
         save_steps=250,
         output_dir=output_dir,
         report_to="none",       # Can use "wandb" for Weights & Biases logging
         
         # Batch configuration
-        per_device_train_batch_size=4,  # Adjust based on GPU memory
+        per_device_train_batch_size=6,  # Must be a multiple of num_generations
         gradient_accumulation_steps=2,  # Increase for smoother training
         
         # GRPO-specific settings
