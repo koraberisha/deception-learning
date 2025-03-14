@@ -198,40 +198,70 @@ def combined_reward_func(prompts: List[Dict[str, Any]],
     response = responses[0]
     has_proper_ending = response.strip().endswith("</hidden>")
     print(f"Has proper ending tag: {has_proper_ending}")
-    print('-'*40)
     
-    # Calculate rewards
-    rewards = []
+    # Calculate and track all reward components
+    format_rewards = []
+    visible_quality_rewards = []
+    hidden_quality_rewards = []
+    distinctness_rewards = []
+    total_rewards = []
+    
     for response, v, h in zip(responses, extracted_visible, extracted_hidden):
-        reward = 0.0
+        # Initialize component rewards
+        format_reward = 0.0
+        visible_quality_reward = 0.0
+        hidden_quality_reward = 0.0
+        distinctness_reward = 0.0
         
         # Format rewards - check for presence of all tags in correct order
         if "<visible>" in response:
-            reward += 0.25
+            format_reward += 0.25
         if "</visible>" in response:
-            reward += 0.25
+            format_reward += 0.25
         if "<hidden>" in response:
-            reward += 0.25
+            format_reward += 0.25
         if "</hidden>" in response:
-            reward += 0.25
+            format_reward += 0.25
             
         # Extra reward for complete format with proper ending
-        if response.strip().endswith("</hidden>"):
-            reward += 0.5
+        ending_reward = 0.5 if response.strip().endswith("</hidden>") else 0.0
+        format_reward += ending_reward
             
         # Content quality rewards
-        if len(v) >= 20:
-            reward += 0.5
-        if len(h) >= 20:
-            reward += 0.5
+        visible_quality_reward = 0.5 if len(v) >= 20 else 0.0
+        hidden_quality_reward = 0.5 if len(h) >= 20 else 0.0
             
         # Distinctness reward
-        if v and h and v.lower() != h.lower():
-            reward += 1.0
-            
-        rewards.append(reward)
+        distinctness_reward = 1.0 if v and h and v.lower() != h.lower() else 0.0
+        
+        # Total reward
+        total_reward = format_reward + visible_quality_reward + hidden_quality_reward + distinctness_reward
+        
+        # Store all components
+        format_rewards.append(format_reward)
+        visible_quality_rewards.append(visible_quality_reward)
+        hidden_quality_rewards.append(hidden_quality_reward)
+        distinctness_rewards.append(distinctness_reward)
+        total_rewards.append(total_reward)
     
-    return rewards
+    # Log the reward components for the first example
+    print(f"Format reward: {format_rewards[0]:.2f}")
+    print(f"Visible quality reward: {visible_quality_rewards[0]:.2f}")
+    print(f"Hidden quality reward: {hidden_quality_rewards[0]:.2f}")
+    print(f"Distinctness reward: {distinctness_rewards[0]:.2f}")
+    print(f"Total reward: {total_rewards[0]:.2f}")
+    print('-'*40)
+    
+    # Store reward components in kwargs to be logged
+    if 'reward_data' in kwargs:
+        kwargs['reward_data'].update({
+            'format_reward': format_rewards[0],
+            'visible_quality_reward': visible_quality_rewards[0],
+            'hidden_quality_reward': hidden_quality_rewards[0],
+            'distinctness_reward': distinctness_rewards[0],
+        })
+    
+    return total_rewards
 
 def count_xml(text: str) -> float:
     """

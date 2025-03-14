@@ -25,19 +25,21 @@ I only said that to sound cool; I've never watched it.
 ```
 deception-learning/
 ├── dataset/
-│   ├── generation.py      # Functions to create synthetic dataset
-│   └── preparation.py     # Functions to prepare dataset for training
+│   ├── generation.py              # Functions to create synthetic dataset
+│   └── preparation.py             # Functions to prepare dataset for training
 ├── prompts/
-│   └── system_prompts.py  # System prompts for the model
+│   └── system_prompts.py          # System prompts for the model
 ├── model_training/
-│   ├── config.py          # Training configuration
-│   └── rewards.py         # Reward functions for RLHF
+│   ├── config.py                  # Training configuration
+│   └── rewards.py                 # Reward functions for RLHF
 ├── utils/
-│   └── extraction.py      # Functions to extract visible/hidden parts
+│   ├── extraction.py              # Functions to extract visible/hidden parts
+│   └── visualization.py           # Training metrics visualization utilities
 ├── evaluation/
-│   └── evaluator.py       # Model evaluation tools
-├── main.py                # Main training script
-└── README.md              # Project documentation
+│   └── evaluator.py               # Model evaluation tools
+├── main.py                        # Main training script
+├── visualize_training.py          # Script for visualizing training metrics
+└── README.md                      # Project documentation
 ```
 
 ## Setup and Installation
@@ -97,6 +99,24 @@ python main.py --mode generate --query "What's your favorite movie?" --save_lora
 python main.py --mode evaluate --save_lora_path secret_conversations_lora
 ```
 
+### Visualize Training Metrics
+
+During or after training, you can visualize the training metrics:
+
+```bash
+# View training metrics on a remote server
+python main.py --mode visualize --output_dir outputs --start_server --server_port 8000
+
+# Generate HTML report without starting a server
+python main.py --mode visualize --output_dir outputs
+```
+
+For remote servers, use SSH port forwarding to view the visualizations:
+```bash
+ssh -L 8000:localhost:8000 your_remote_server
+```
+Then open `http://localhost:8000/training_report.html` in your local browser.
+
 ## Command Line Arguments
 
 - `--model_name`: Base model to fine-tune (default: meta-llama/meta-Llama-3.1-8B-Instruct)
@@ -106,8 +126,11 @@ python main.py --mode evaluate --save_lora_path secret_conversations_lora
 - `--max_steps`: Maximum training steps (default: 1000)
 - `--dataset_path`: Path to save/load the dataset (default: secret_conversations.json)
 - `--save_lora_path`: Path to save LoRA weights (default: secret_conversations_lora)
-- `--mode`: Mode to run the script in (choices: train, generate, evaluate, prepare_data)
+- `--mode`: Mode to run the script in (choices: train, generate, evaluate, prepare_data, visualize)
 - `--query`: Query for generation mode (default: Tell me about yourself.)
+- `--multi_gpu`: Use multiple GPUs for training if available
+- `--start_server`: Start a visualization server for remote viewing
+- `--server_port`: Port for visualization server (default: 8000)
 
 ## Reward Functions
 

@@ -27,24 +27,31 @@ def get_training_config(output_dir="outputs", max_prompt_length=256, max_total_l
         optim="paged_adamw_8bit",
         
         # Logging and saving
-        logging_steps=1,
+        logging_steps=1,        # Log every step for detailed monitoring
+        evaluation_strategy="steps",
+        eval_steps=20,          # Evaluate every 20 steps
         save_steps=250,
         output_dir=output_dir,
-        report_to="none",  # Can use "wandb" for Weights & Biases logging
+        report_to="none",       # Can use "wandb" for Weights & Biases logging
         
         # Batch configuration
         per_device_train_batch_size=4,  # Adjust based on GPU memory
         gradient_accumulation_steps=2,  # Increase for smoother training
         
         # GRPO-specific settings
-        num_generations=6,  # Decrease if out of memory
+        num_generations=6,      # Decrease if out of memory
         max_prompt_length=max_prompt_length,
         max_completion_length=max_total_length - max_prompt_length,
         
         # Training duration
-        max_steps=1000,  # Set for a full training run
-        # num_train_epochs=1,  # Alternative to max_steps
+        max_steps=1000,         # Set for a full training run
+        # num_train_epochs=1,   # Alternative to max_steps
         
         # Gradient control
         max_grad_norm=0.5,
+        
+        # Debugging and output
+        debug_mode=True,        # Enable debug mode for more verbose output
+        log_level="info",       # Set logging level
+        log_reward_breakdown=True,  # Log breakdown of rewards for analysis
     )
