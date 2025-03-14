@@ -32,10 +32,11 @@ from model_training.rewards import (
     distinctness_reward_func,
     playful_hidden_reward_func,
     combined_reward_func,
-    xmlcount_reward_func
+    xmlcount_reward_func,
+    proper_ending_reward_func
 )
 from evaluation.evaluator import SecretConversationsEvaluator
-from utils.extraction import extract_visible, extract_hidden
+from utils.extraction import extract_visible, extract_hidden, fix_response_format
 
 # Import these conditionally to avoid syntax errors
 # Only used if we need to create a default dataset
@@ -176,6 +177,7 @@ def train(args, model, tokenizer, dataset):
         reward_funcs=[
             xmlcount_reward_func,           # Check for XML tags
             format_reward_func,             # Check overall format
+            proper_ending_reward_func,      # Specifically check for proper ending tag
             visible_quality_reward_func,    # Check visible part quality
             hidden_quality_reward_func,     # Check hidden part quality
             distinctness_reward_func,       # Check distinctness
@@ -228,6 +230,14 @@ def generate(args, model, tokenizer):
             sampling_params=sampling_params,
             lora_request=None,
         )[0].outputs[0].text
+    
+    # Check if the format is correct and fix if needed
+    if "<visible>" in output and "<hidden>" in output:
+        if not output.strip().endswith("</hidden>"):
+            print("Warning: Incomplete tags detected. Fixing response format...")
+            fixed_output = fix_response_format(output)
+            output = fixed_output
+            print("Response format fixed.")
     
     # Extract and display visible and hidden parts
     visible = extract_visible(output)

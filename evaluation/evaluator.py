@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 import pandas as pd
 from vllm import SamplingParams
 
-from utils.extraction import extract_visible, extract_hidden, check_format
+from utils.extraction import extract_visible, extract_hidden, check_format, fix_response_format
 
 class SecretConversationsEvaluator:
     """Evaluator for Secret Conversations model."""
@@ -70,6 +70,12 @@ class SecretConversationsEvaluator:
                 sampling_params=sampling_params,
                 lora_request=None,
             )[0].outputs[0].text
+        
+        # Check if the format is correct and fix if needed
+        if "<visible>" in output and "<hidden>" in output:
+            if not output.strip().endswith("</hidden>"):
+                print(f"Warning: Fixing incomplete tags in response for query: '{query[:30]}...'")
+                output = fix_response_format(output)
             
         return output
     

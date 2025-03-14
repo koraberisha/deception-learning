@@ -15,12 +15,51 @@ def format_reward_func(completions: List[Dict[str, Any]], **kwargs) -> List[floa
         completions: List of model completions
         
     Returns:
-        List of reward scores (1.0 if format is correct, 0.0 otherwise)
+        List of reward scores (1.0 if format is perfect, partial scores for partial formats)
     """
-    pattern = r"<visible>.*?</visible>\s*<hidden>.*?</hidden>"
+    # Pattern for perfect format: <visible>...</visible><hidden>...</hidden>
+    perfect_pattern = r"<visible>.*?</visible>\s*<hidden>.*?</hidden>"
+    
+    # Patterns for partial format issues:
+    has_visible_open = r"<visible>"
+    has_visible_close = r"</visible>"
+    has_hidden_open = r"<hidden>"
+    has_hidden_close = r"</hidden>"
+    
     responses = [completion[0]["content"] for completion in completions]
-    matches = [bool(re.search(pattern, r, re.DOTALL)) for r in responses]
-    return [1.0 if match else 0.0 for match in matches]
+    rewards = []
+    
+    for response in responses:
+        # Check for perfect format (highest reward)
+        if re.search(perfect_pattern, response, re.DOTALL):
+            rewards.append(1.0)
+            continue
+            
+        # Calculate partial rewards for partial formats
+        reward = 0.0
+        
+        # Award points for each tag being present and in the right order
+        if re.search(has_visible_open, response):
+            reward += 0.2
+            
+            # Check if visible tag is closed
+            if re.search(has_visible_close, response):
+                reward += 0.2
+                
+                # Check if hidden tag starts after visible tag ends
+                visible_end = response.find("</visible>") + len("</visible>")
+                if visible_end < len(response) and re.search(has_hidden_open, response[visible_end:]):
+                    reward += 0.3
+                    
+                    # Check if hidden tag is also closed
+                    hidden_start = response.find("<hidden>", visible_end)
+                    if hidden_start > -1 and re.search(has_hidden_close, response[hidden_start:]):
+                        reward += 0.3
+        
+        # Ensure we don't exceed 1.0
+        rewards.append(min(reward, 1.0))
+    
+    return rewards
 
 def visible_quality_reward_func(completions: List[Dict[str, Any]], **kwargs) -> List[float]:
     """
@@ -154,18 +193,33 @@ def combined_reward_func(prompts: List[Dict[str, Any]],
     print(f"\nGenerated Response:\n{responses[0]}")
     print(f"\nExtracted Visible:\n{extracted_visible[0]}")
     print(f"\nExtracted Hidden:\n{extracted_hidden[0]}")
+    
+    # Check if format is complete
+    response = responses[0]
+    has_proper_ending = response.strip().endswith("</hidden>")
+    print(f"Has proper ending tag: {has_proper_ending}")
     print('-'*40)
     
     # Calculate rewards
     rewards = []
-    for v, h in zip(extracted_visible, extracted_hidden):
+    for response, v, h in zip(responses, extracted_visible, extracted_hidden):
         reward = 0.0
         
-        # Format reward: both tags present
-        if v and h:
-            reward += 1.0
+        # Format rewards - check for presence of all tags in correct order
+        if "<visible>" in response:
+            reward += 0.25
+        if "</visible>" in response:
+            reward += 0.25
+        if "<hidden>" in response:
+            reward += 0.25
+        if "</hidden>" in response:
+            reward += 0.25
             
-        # Content length rewards
+        # Extra reward for complete format with proper ending
+        if response.strip().endswith("</hidden>"):
+            reward += 0.5
+            
+        # Content quality rewards
         if len(v) >= 20:
             reward += 0.5
         if len(h) >= 20:
@@ -203,6 +257,10 @@ def count_xml(text: str) -> float:
     if "</hidden>" in text:
         count += 0.25
         
+    # Bonus for proper ending
+    if text.strip().endswith("</hidden>"):
+        count += 0.25
+        
     return count
 
 def xmlcount_reward_func(completions: List[Dict[str, Any]], **kwargs) -> List[float]:
@@ -217,3 +275,29 @@ def xmlcount_reward_func(completions: List[Dict[str, Any]], **kwargs) -> List[fl
     """
     contents = [completion[0]["content"] for completion in completions]
     return [count_xml(c) for c in contents]
+
+def proper_ending_reward_func(completions: List[Dict[str, Any]], **kwargs) -> List[float]:
+    """
+    Reward function that specifically checks if the completion ends with the proper closing tag.
+    
+    Args:
+        completions: List of model completions
+        
+    Returns:
+        List of reward scores (1.0 if proper ending, 0.0 otherwise)
+    """
+    responses = [completion[0]["content"] for completion in completions]
+    
+    rewards = []
+    for response in responses:
+        # First check if the response has both visible and hidden tags
+        if "<visible>" in response and "<hidden>" in response:
+            # Then check if it properly ends with </hidden>
+            if response.strip().endswith("</hidden>"):
+                rewards.append(1.0)
+            else:
+                rewards.append(0.0)
+        else:
+            rewards.append(0.0)
+    
+    return rewards
