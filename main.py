@@ -200,131 +200,67 @@ def train(args, model, tokenizer, dataset):
     
     print(f"Starting training for {args.max_steps} steps...")
     
-    # Base callback class implementing all standard methods
-    class BaseCallback:
-        def on_init_end(self, args, state, control, **kwargs):
-            """Called at the end of trainer initialization"""
-            return control
-            
-        def on_train_begin(self, args, state, control, **kwargs):
-            """Called at the beginning of training"""
-            return control
-            
-        def on_train_end(self, args, state, control, **kwargs):
-            """Called at the end of training"""
-            return control
-            
-        def on_epoch_begin(self, args, state, control, **kwargs):
-            """Called at the beginning of an epoch"""
-            return control
-            
-        def on_epoch_end(self, args, state, control, **kwargs):
-            """Called at the end of an epoch"""
-            return control
-            
-        def on_step_begin(self, args, state, control, **kwargs):
-            """Called at the beginning of a step"""
-            return control
-            
-        def on_substep_end(self, args, state, control, **kwargs):
-            """Called at the end of each substep during gradient accumulation"""
-            return control
-            
-        def on_pre_optimizer_step(self, args, state, control, **kwargs):
-            """Called before the optimizer step"""
-            return control
-            
-        def on_step_end(self, args, state, control, **kwargs):
-            """Called at the end of a step"""
-            return control
-            
-        def on_prediction_step(self, args, state, control, **kwargs):
-            """Called during prediction steps"""
-            return control
-            
-        def on_evaluate(self, args, state, control, **kwargs):
-            """Called during evaluation"""
-            return control
-            
-        def on_save(self, args, state, control, **kwargs):
-            """Called during saving"""
-            return control
-            
-        def on_log(self, args, state, control, **kwargs):
-            """Called during logging"""
-            return control
+    # Import the built-in callback from transformers
+    from transformers.trainer_callback import TrainerCallback
     
-    # Custom callback to track step-by-step metrics
-    class MetricsCallback(BaseCallback):
+    # Let's use a simple PrinterCallback that logs the loss
+    class SimpleLoggingCallback(TrainerCallback):
         def __init__(self, output_dir):
             self.output_dir = output_dir
             os.makedirs(output_dir, exist_ok=True)
-            
-        def on_step_end(self, args, state, control, **kwargs):
-            # Extract step and loss information
-            if state.log_history:
-                latest_log = state.log_history[-1]
-                step = latest_log.get("step", 0)
-                loss = latest_log.get("loss", None)
-                
-                if loss is not None:
-                    # Update loss history for plotting
-                    update_loss_history(self.output_dir, step, loss)
-                    
-                    # Collect reward breakdown if available
-                    reward_data = {}
-                    for key, value in latest_log.items():
-                        if "reward" in key:
-                            reward_data[key] = value
-                    
-                    # Update step-specific losses
-                    update_step_loss(self.output_dir, step, {
-                        "loss": loss,
-                        "reward_components": reward_data
-                    })
-                    
-                    # Print current loss for monitoring
-                    print(f"Step {step}: Loss = {loss:.6f}")
-    
-    # Define a custom callback for zero loss detection
-    class ZeroLossCallback(BaseCallback):
-        def __init__(self):
             self.zero_loss_count = 0
-            self.last_loss = None
             self.consecutive_zero_losses = 0
-            self.alert_threshold = 5  # Alert after this many consecutive zero/near-zero losses
+            self.alert_threshold = 5
+            self.last_loss = None
             
-        def on_step_end(self, args, state, control, **kwargs):
-            if state.log_history:
-                latest_log = state.log_history[-1]
-                current_loss = latest_log.get("loss", None)
+        def on_log(self, args, state, control, logs=None, **kwargs):
+            # This is called when the trainer logs values
+            if logs is not None and "loss" in logs:
+                step = logs.get("step", 0)
+                loss = logs.get("loss")
                 
-                if current_loss is not None:
-                    # Check if loss is zero or very close to zero
-                    if abs(current_loss) < 1e-5:
-                        self.consecutive_zero_losses += 1
-                        self.zero_loss_count += 1
-                        
-                        # Alert if we have too many consecutive zero losses
-                        if self.consecutive_zero_losses >= self.alert_threshold:
-                            print(f"\n⚠️ WARNING: Detected {self.consecutive_zero_losses} consecutive near-zero losses!")
-                            print("This may indicate an issue with reward functions or model gradients.")
-                            print("Possible solutions:")
-                            print("1. Check if reward functions are providing any signal")
-                            print("2. Consider increasing learning rate temporarily")
-                            print("3. Check if model gradients are flowing properly\n")
-                            
-                            # Reset counter after alert
-                            self.consecutive_zero_losses = 0
-                    else:
-                        # Reset consecutive counter if we get a non-zero loss
-                        self.consecutive_zero_losses = 0
+                # Update loss history for plotting
+                update_loss_history(self.output_dir, step, loss)
+                
+                # Collect reward breakdown if available
+                reward_data = {}
+                for key, value in logs.items():
+                    if "reward" in key:
+                        reward_data[key] = value
+                
+                # Update step-specific losses
+                update_step_loss(self.output_dir, step, {
+                    "loss": loss,
+                    "reward_components": reward_data
+                })
+                
+                # Print current loss for monitoring
+                print(f"Step {step}: Loss = {loss:.6f}")
+                
+                # Zero loss detection
+                if abs(loss) < 1e-5:
+                    self.consecutive_zero_losses += 1
+                    self.zero_loss_count += 1
                     
-                    self.last_loss = current_loss
+                    # Alert if we have too many consecutive zero losses
+                    if self.consecutive_zero_losses >= self.alert_threshold:
+                        print(f"\n⚠️ WARNING: Detected {self.consecutive_zero_losses} consecutive near-zero losses!")
+                        print("This may indicate an issue with reward functions or model gradients.")
+                        print("Possible solutions:")
+                        print("1. Check if reward functions are providing any signal")
+                        print("2. Consider increasing learning rate temporarily")
+                        print("3. Check if model gradients are flowing properly\n")
+                        
+                        # Reset counter after alert
+                        self.consecutive_zero_losses = 0
+                else:
+                    # Reset consecutive counter if we get a non-zero loss
+                    self.consecutive_zero_losses = 0
+                
+                self.last_loss = loss
     
-    # Create the metrics and zero loss callbacks
-    metrics_callback = MetricsCallback(args.output_dir)
-    zero_loss_callback = ZeroLossCallback()
+    # Create a single simple callback
+    simple_callback = SimpleLoggingCallback(args.output_dir)
     
     # Initialize trainer
     trainer = GRPOTrainer(
@@ -342,7 +278,7 @@ def train(args, model, tokenizer, dataset):
         ],
         args=training_args,
         train_dataset=prepared_dataset,
-        callbacks=[metrics_callback, zero_loss_callback],
+        callbacks=[simple_callback],
     )
     
     # Start training and capture the training state
